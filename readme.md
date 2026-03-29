@@ -1,4 +1,4 @@
-# 📉 Previsão de "Agitação" do Mercado: Inteligência Artificial vs. Estatística
+# 📉 Previsão de volatilidade do Mercado
 
 Este projeto foi criado para responder a uma pergunta simples, mas valiosa: **O quão agitado (volátil) o mercado de Bitcoin estará amanhã?** Saber se o mercado vai oscilar muito ou pouco é fundamental para investidores e empresas protegerem seu dinheiro.
 

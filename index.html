@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC/USDT — Volatility Forecasting Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: rgba(240,246,252,0.1);
+    --border2: rgba(240,246,252,0.2);
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #484f58;
+    --blue: #378add;
+    --blue-soft: rgba(55,138,221,0.15);
+    --coral: #d85a30;
+    --coral-soft: rgba(216,90,48,0.15);
+    --teal: #1d9e75;
+    --teal-soft: rgba(29,158,117,0.15);
+    --amber: #ba7517;
+    --amber-soft: rgba(186,117,23,0.15);
+    --purple: #7f77dd;
+    --purple-soft: rgba(127,119,221,0.15);
+    --green: #3fb950;
+    --red: #f85149;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--bg2);
+    border-bottom: 0.5px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--blue-soft);
+    border: 0.5px solid var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--blue);
+  }
+  .logo-text { font-size: 15px; font-weight: 500; }
+  .logo-sub { font-size: 12px; color: var(--text2); }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--teal-soft); border: 0.5px solid var(--teal);
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 12px; color: var(--teal);
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--teal);
+  }
+
+  main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+
+  .controls {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex; flex-wrap: wrap; gap: 16px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .ctrl-group { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+  .ctrl-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  select, input[type=range] {
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+  }
+  select:hover { border-color: var(--blue); }
+
+  input[type=range] {
+    padding: 0; height: 4px; width: 140px;
+    -webkit-appearance: none; appearance: none;
+    accent-color: var(--blue);
+  }
+
+  .range-row { display: flex; align-items: center; gap: 8px; }
+  .range-val { font-size: 13px; font-weight: 500; color: var(--blue); min-width: 30px; }
+
+  .run-btn {
+    background: var(--blue);
+    border: none; border-radius: var(--radius);
+    color: #fff; padding: 8px 20px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.15s;
+    margin-left: auto;
+  }
+  .run-btn:hover { opacity: 0.85; }
+  .run-btn:active { opacity: 0.7; }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .metric-card.blue::before { background: var(--blue); }
+  .metric-card.coral::before { background: var(--coral); }
+  .metric-card.teal::before { background: var(--teal); }
+  .metric-card.purple::before { background: var(--purple); }
+
+  .metric-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .metric-row { display: flex; align-items: flex-end; justify-content: space-between; }
+  .metric-val { font-size: 22px; font-weight: 500; line-height: 1; }
+  .metric-sub { font-size: 11px; margin-top: 4px; }
+  .metric-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500;
+  }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-red   { background: rgba(248,81,73,0.15);  color: var(--red); }
+  .badge-blue  { background: var(--blue-soft); color: var(--blue); }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .chart-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+  }
+
+  .chart-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .chart-title { font-size: 13px; font-weight: 500; }
+  .chart-subtitle { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  .chart-wrap { position: relative; }
+
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left; padding: 8px 10px;
+    color: var(--text2); font-weight: 500;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+
+  .winner { color: var(--green); font-weight: 500; }
+  .loser  { color: var(--text2); }
+
+  .model-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  }
+  .tag-coral  { background: var(--coral-soft);  color: var(--coral); }
+  .tag-blue   { background: var(--blue-soft);   color: var(--blue); }
+  .tag-teal   { background: var(--teal-soft);   color: var(--teal); }
+  .tag-amber  { background: var(--amber-soft);  color: var(--amber); }
+  .tag-purple { background: var(--purple-soft); color: var(--purple); }
+
+  .progress-bar {
+    background: var(--bg3); border-radius: 4px; height: 6px; width: 100%; margin-top: 6px;
+  }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+  .log-box {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    height: 160px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+  .log-line { display: block; }
+  .log-ok   { color: var(--green); }
+  .log-info { color: var(--blue); }
+  .log-warn { color: var(--amber); }
+
+  .formula-box {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 2;
+    margin-top: 8px;
+  }
+  .formula-box span { color: var(--blue); }
+  .formula-box em { color: var(--coral); font-style: normal; }
+
+  .section-title {
+    font-size: 11px; font-weight: 500; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid  { grid-template-columns: 1fr; }
+    .bottom-grid  { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">&#8645;</div>
+    <div>
+      <div class="logo-text">BTC/USDT Volatility Forecasting</div>
+      <div class="logo-sub">GARCH(1,1) vs LSTM + FinBERT Sentiment</div>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot"></div>
+    Sistema pronto — modo simulação
+  </div>
+</header>
+
+<main>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Modo</span>
+      <select id="sel-mode">
+        <option value="mock">Mock (offline)</option>
+        <option value="live">Live (Binance)</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Lookback LSTM</span>
+      <div class="range-row">
+        <input type="range" id="sl-lookback" min="10" max="60" value="30" step="5" oninput="document.getElementById('lb-val').textContent=this.value+'d'">
+        <span class="range-val" id="lb-val">30d</span>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Épocas LSTM</span>
+      <div class="range-row">
+        <input type="range" id="sl-epochs" min="20" max="150" value="80" step="10" oninput="document.getElementById('ep-val').textContent=this.value">
+        <span class="range-val" id="ep-val">80</span>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Sentimento NLP</span>
+      <select id="sel-sent">
+        <option value="1">Habilitado (FinBERT)</option>
+        <option value="0">Desabilitado</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Janela RV</span>
+      <select id="sel-rv">
+        <option value="22">22 dias (mensal)</option>
+        <option value="5">5 dias (semanal)</option>
+        <option value="10">10 dias</option>
+      </select>
+    </div>
+    <button class="run-btn" onclick="simulate()">&#9654; Simular pipeline</button>
+  </div>
+
+  <!-- METRIC CARDS -->
+  <div class="metrics-grid">
+    <div class="metric-card blue">
+      <div class="metric-label">LSTM — MAE</div>
+      <div class="metric-row">
+        <div>
+          <div class="metric-val" id="m-lstm-mae">—</div>
+          <div class="metric-sub" style="color:var(--text2)">erro médio absoluto</div>
+        </div>
+        <div class="metric-badge badge-blue" id="b-lstm-mae"></div>
+      </div>
+    </div>
+    <div class="metric-card coral">
+      <div class="metric-label">GARCH(1,1) — MAE</div>
+      <div class="metric-row">
+        <div>
+          <div class="metric-val" id="m-garch-mae">—</div>
+          <div class="metric-sub" style="color:var(--text2)">erro médio absoluto</div>
+        </div>
+        <div class="metric-badge" id="b-garch-mae"></div>
+      </div>
+    </div>
+    <div class="metric-card teal">
+      <div class="metric-label">LSTM — Directional Acc.</div>
+      <div class="metric-row">
+        <div>
+          <div class="metric-val" id="m-lstm-da">—</div>
+          <div class="metric-sub" style="color:var(--text2)">acertos direção (%)</div>
+        </div>
+        <div class="metric-badge" id="b-lstm-da"></div>
+      </div>
+    </div>
+    <div class="metric-card purple">
+      <div class="metric-label">GARCH — RMSE</div>
+      <div class="metric-row">
+        <div>
+          <div class="metric-val" id="m-garch-rmse">—</div>
+          <div class="metric-sub" style="color:var(--text2)">raiz erro quadrático</div>
+        </div>
+        <div class="metric-badge" id="b-garch-rmse"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CHARTS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Volatilidade realizada vs. prevista</div>
+          <div class="chart-subtitle">Anualizada — conjunto de teste</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#58a6ff"></div>Real (RV)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#378add"></div>LSTM</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#d85a30"></div>GARCH(1,1)</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px">
+        <canvas id="chartMain"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Curva de treino LSTM</div>
+          <div class="chart-subtitle">Loss por época</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px">
+        <canvas id="chartLoss"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid">
+
+    <!-- Tabela de métricas -->
+    <div class="chart-card">
+      <div class="section-title">Comparativo de métricas</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Métrica</th>
+              <th>LSTM</th>
+              <th>GARCH(1,1)</th>
+            </tr>
+          </thead>
+          <tbody id="metrics-table">
+            <tr><td colspan="3" style="color:var(--text3);text-align:center;padding:20px">Clique em "Simular pipeline"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px">
+        <div class="formula-box">
+          <span>MAE</span>  = (1/n)·Σ|ŷ − y|<br>
+          <span>RMSE</span> = √[(1/n)·Σ(ŷ−y)²]<br>
+          <em>QLIKE</em> = Σ[y/σ̂² − ln(σ̂²)]
+        </div>
+      </div>
+    </div>
+
+    <!-- Histograma de resíduos -->
+    <div class="chart-card">
+      <div class="section-title">Distribuição dos resíduos</div>
+      <div class="legend" style="margin-bottom:10px">
+        <div class="legend-item"><div class="legend-dot" style="background:#378add"></div>LSTM</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d85a30"></div>GARCH</div>
+      </div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="chartResid"></canvas>
+      </div>
+    </div>
+
+    <!-- Log + Sentimento -->
+    <div class="chart-card">
+      <div class="section-title">Log de execução</div>
+      <div class="log-box" id="log-box">
+        <span class="log-line log-info">[sistema] aguardando simulação...</span>
+      </div>
+      <div style="margin-top:12px">
+        <div class="section-title">Score de sentimento (mock)</div>
+        <div class="chart-wrap" style="height:80px">
+          <canvas id="chartSent"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PARÂMETROS DO GARCH -->
+  <div style="margin-top:16px">
+    <div class="chart-card">
+      <div class="section-title">Parâmetros estimados — GARCH(1,1)</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px" id="garch-params">
+        <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:var(--radius)">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">ω (omega)</div>
+          <div style="font-size:18px;font-weight:500" id="gp-omega">—</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:var(--radius)">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">α (ARCH)</div>
+          <div style="font-size:18px;font-weight:500" id="gp-alpha">—</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:var(--radius)">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">β (GARCH)</div>
+          <div style="font-size:18px;font-weight:500" id="gp-beta">—</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:var(--radius)">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">α + β</div>
+          <div style="font-size:18px;font-weight:500" id="gp-sum">—</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">deve ser &lt; 1</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg3);border-radius:var(--radius)">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Half-life</div>
+          <div style="font-size:18px;font-weight:500" id="gp-hl">—</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">dias</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Persistência (α+β) — quanto mais próximo de 1, mais duradouro o choque</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="persist-bar" style="width:0%;background:var(--coral)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let chartMain = null, chartLoss = null, chartResid = null, chartSent = null;
+
+function log(msg, type='') {
+  const box = document.getElementById('log-box');
+  const span = document.createElement('span');
+  span.className = 'log-line' + (type ? ' log-'+type : '');
+  const ts = new Date().toLocaleTimeString('pt-BR');
+  span.textContent = '['+ts+'] ' + msg;
+  box.appendChild(span);
+  box.scrollTop = box.scrollHeight;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function rng(seed) {
+  let s = seed;
+  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+}
+
+function generateData(n=120, seed=42) {
+  const rand = rng(seed);
+  const dates = [];
+  const rv_real = [], rv_lstm = [], rv_garch = [];
+  const sent = [];
+  let rv = 0.35, regime = 0;
+  const base = new Date('2024-01-01');
+
+  for (let i = 0; i < n; i++) {
+    const d = new Date(base); d.setDate(base.getDate() + i);
+    dates.push(d.toLocaleDateString('pt-BR', {month:'short', day:'2-digit'}));
+
+    if (rand() < 0.05) regime = 1 - regime;
+    const vol_shock = regime ? 0.04 : 0.01;
+    rv = Math.max(0.05, rv * 0.92 + vol_shock * rand() + 0.01);
+    rv_real.push(rv);
+
+    const lstm_err  = (rand() - 0.5) * 0.04;
+    const garch_err = (rand() - 0.5) * 0.07;
+    rv_lstm.push(Math.max(0.02, rv + lstm_err));
+    rv_garch.push(Math.max(0.02, rv + garch_err));
+    sent.push((rand() - 0.45) * 0.8);
+  }
+  return { dates, rv_real, rv_lstm, rv_garch, sent };
+}
+
+function computeMetrics(real, pred) {
+  const n = real.length;
+  const mae  = real.reduce((s,v,i) => s + Math.abs(v-pred[i]), 0) / n;
+  const rmse = Math.sqrt(real.reduce((s,v,i) => s + (v-pred[i])**2, 0) / n);
+  const mape = real.reduce((s,v,i) => s + Math.abs((v-pred[i])/v), 0) / n * 100;
+  const qlike = real.reduce((s,v,i) => {
+    const ps = Math.max(pred[i]**2, 1e-8);
+    return s + v**2/ps - Math.log(ps);
+  }, 0) / n;
+  const da = real.slice(1).filter((v,i) =>
+    (v - real[i]) > 0 === (pred[i+1] - pred[i]) > 0
+  ).length / (n-1) * 100;
+  return { mae, rmse, mape, qlike, da };
+}
+
+function buildResidualHist(real, pred, bins=20) {
+  const resids = real.map((v,i) => v - pred[i]);
+  const mn = Math.min(...resids), mx = Math.max(...resids);
+  const w = (mx - mn) / bins;
+  const labels = [], counts = [];
+  for (let i = 0; i < bins; i++) {
+    labels.push((mn + w*i).toFixed(3));
+    counts.push(resids.filter(r => r >= mn+w*i && r < mn+w*(i+1)).length);
+  }
+  return { labels, counts };
+}
+
+function makeLossCurve(epochs, seed=7) {
+  const rand = rng(seed);
+  const tr = [], val = [];
+  let tl = 0.08, vl = 0.10;
+  for (let i = 0; i < epochs; i++) {
+    tl = Math.max(0.005, tl * 0.96 + (rand()-0.5)*0.002);
+    vl = Math.max(0.008, vl * 0.97 + (rand()-0.5)*0.003);
+    tr.push(tl); val.push(vl);
+  }
+  return { tr, val };
+}
+
+async function simulate() {
+  const lb    = +document.getElementById('sl-lookback').value;
+  const ep    = +document.getElementById('sl-epochs').value;
+  const sent  = document.getElementById('sel-sent').value === '1';
+  const mode  = document.getElementById('sel-mode').value;
+
+  document.getElementById('log-box').innerHTML = '';
+  log('Iniciando pipeline — modo: ' + mode, 'info');
+  await sleep(300);
+  log('DataLoader: buscando ' + (mode==='mock'?'dados sintéticos':'candles Binance') + '...', 'info');
+  await sleep(400);
+  log('Computed: log-returns, RV (janela=' + document.getElementById('sel-rv').value + 'd)', 'ok');
+  await sleep(300);
+  log('Feature engineering: SMA, EMA, ATR, RSI, lags, HL-spread', 'ok');
+  await sleep(200);
+  if (sent) { log('SentimentPipeline: carregando FinBERT (mock)...', 'warn'); await sleep(350); log('Scores de sentimento injetados como features', 'ok'); }
+  await sleep(200);
+  log('GARCH(1,1): estimando via MLE (distribuição-t)...', 'info');
+  await sleep(500);
+
+  const alpha = 0.08 + Math.random()*0.06;
+  const beta  = 0.80 + Math.random()*0.10;
+  const omega = 0.000015 + Math.random()*0.00001;
+  const ab    = alpha + beta;
+  const hl    = Math.log(0.5) / Math.log(ab);
+  document.getElementById('gp-omega').textContent = omega.toExponential(2);
+  document.getElementById('gp-alpha').textContent = alpha.toFixed(4);
+  document.getElementById('gp-beta').textContent  = beta.toFixed(4);
+  document.getElementById('gp-sum').textContent   = ab.toFixed(4);
+  document.getElementById('gp-sum').style.color   = ab < 1 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('gp-hl').textContent    = Math.abs(hl).toFixed(1);
+  document.getElementById('persist-bar').style.width = Math.min(ab*100,99)+'%';
+
+  log('GARCH params: α=' + alpha.toFixed(4) + ' β=' + beta.toFixed(4) + ' α+β=' + ab.toFixed(4), 'ok');
+  await sleep(300);
+  log('LSTM: treinando (' + ep + ' épocas, lookback=' + lb + 'd, dropout=0.3)...', 'info');
+  await sleep(600);
+  log('EarlyStopping: convergido. Best val_loss restaurado.', 'ok');
+  await sleep(200);
+  log('Backtester: calculando métricas MAE, RMSE, QLIKE, DA%...', 'info');
+  await sleep(300);
+
+  const data = generateData(120);
+  const mL = computeMetrics(data.rv_real, data.rv_lstm);
+  const mG = computeMetrics(data.rv_real, data.rv_garch);
+
+  const lstmWins = mL.mae < mG.mae;
+  document.getElementById('m-lstm-mae').textContent  = mL.mae.toFixed(4);
+  document.getElementById('m-garch-mae').textContent = mG.mae.toFixed(4);
+  document.getElementById('m-lstm-da').textContent   = mL.da.toFixed(1) + '%';
+  document.getElementById('m-garch-rmse').textContent = mG.rmse.toFixed(4);
+
+  const bLM = document.getElementById('b-lstm-mae');
+  const bGM = document.getElementById('b-garch-mae');
+  bLM.textContent = lstmWins ? 'Melhor' : '';
+  bLM.className   = 'metric-badge ' + (lstmWins ? 'badge-green' : '');
+  bGM.textContent = lstmWins ? '' : 'Melhor';
+  bGM.className   = 'metric-badge ' + (lstmWins ? '' : 'badge-green');
+  document.getElementById('b-lstm-da').textContent  = mL.da > 55 ? 'Acima de 55%' : '';
+  document.getElementById('b-lstm-da').className    = 'metric-badge ' + (mL.da > 55 ? 'badge-green' : '');
+  document.getElementById('b-garch-rmse').textContent = '';
+  document.getElementById('b-garch-rmse').className = 'metric-badge';
+
+  const tbody = document.getElementById('metrics-table');
+  const rows = [
+    ['MAE',    mL.mae.toFixed(5),   mG.mae.toFixed(5),  mL.mae < mG.mae ? 0 : 1],
+    ['RMSE',   mL.rmse.toFixed(5),  mG.rmse.toFixed(5), mL.rmse < mG.rmse ? 0 : 1],
+    ['MAPE %', mL.mape.toFixed(2),  mG.mape.toFixed(2), mL.mape < mG.mape ? 0 : 1],
+    ['QLIKE',  mL.qlike.toFixed(4), mG.qlike.toFixed(4),mL.qlike < mG.qlike ? 0 : 1],
+    ['DA %',   mL.da.toFixed(1),    mG.da.toFixed(1),   mL.da > mG.da ? 0 : 1],
+  ];
+  tbody.innerHTML = rows.map(([m,l,g,w]) =>
+    `<tr>
+      <td style="color:var(--text2)">${m}</td>
+      <td class="${w===0?'winner':'loser'}">${l}</td>
+      <td class="${w===1?'winner':'loser'}">${g}</td>
+    </tr>`
+  ).join('');
+
+  renderCharts(data, ep);
+  log('Pipeline concluído.', 'ok');
+}
+
+function renderCharts(data, ep) {
+  const n = data.dates.length;
+  const step = Math.ceil(n/20);
+  const xlabels = data.dates.map((d,i) => i%step===0 ? d : '');
+
+  if (chartMain) chartMain.destroy();
+  chartMain = new Chart(document.getElementById('chartMain'), {
+    type: 'line',
+    data: {
+      labels: xlabels,
+      datasets: [
+        { label:'Real', data: data.rv_real, borderColor:'#58a6ff', borderWidth:1.5, pointRadius:0, tension:0.3, fill:false },
+        { label:'LSTM', data: data.rv_lstm, borderColor:'#378add', borderWidth:1.2, pointRadius:0, tension:0.3, fill:false, borderDash:[4,2] },
+        { label:'GARCH', data: data.rv_garch, borderColor:'#d85a30', borderWidth:1.2, pointRadius:0, tension:0.3, fill:false, borderDash:[2,3] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { ticks:{ color:'#8b949e', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        y: { ticks:{ color:'#8b949e', font:{size:10}, callback: v => (v*100).toFixed(0)+'%' }, grid:{ color:'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+
+  const lc = makeLossCurve(ep);
+  const epLabels = Array.from({length:ep},(_,i)=>i+1);
+  if (chartLoss) chartLoss.destroy();
+  chartLoss = new Chart(document.getElementById('chartLoss'), {
+    type: 'line',
+    data: {
+      labels: epLabels,
+      datasets: [
+        { label:'Train', data: lc.tr, borderColor:'#378add', borderWidth:1.5, pointRadius:0, tension:0.4, fill:false },
+        { label:'Val',   data: lc.val, borderColor:'#d85a30', borderWidth:1.2, pointRadius:0, tension:0.4, fill:false, borderDash:[4,2] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ display:true, labels:{ color:'#8b949e', font:{size:10}, boxWidth:10, boxHeight:10 } } },
+      scales: {
+        x: { ticks:{ color:'#8b949e', font:{size:10}, maxTicksLimit:6 }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        y: { ticks:{ color:'#8b949e', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+
+  const hL = buildResidualHist(data.rv_real, data.rv_lstm);
+  const hG = buildResidualHist(data.rv_real, data.rv_garch);
+  if (chartResid) chartResid.destroy();
+  chartResid = new Chart(document.getElementById('chartResid'), {
+    type: 'bar',
+    data: {
+      labels: hL.labels,
+      datasets: [
+        { label:'LSTM',  data:hL.counts, backgroundColor:'rgba(55,138,221,0.5)', borderWidth:0 },
+        { label:'GARCH', data:hG.counts, backgroundColor:'rgba(216,90,48,0.5)',  borderWidth:0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { ticks:{ color:'#8b949e', font:{size:9}, maxTicksLimit:5 }, grid:{ display:false } },
+        y: { ticks:{ color:'#8b949e', font:{size:9} }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  const sentLabels = data.dates.filter((_,i)=>i%6===0);
+  const sentVals   = data.sent.filter((_,i)=>i%6===0);
+  const sentColors = sentVals.map(v => v >= 0 ? 'rgba(63,185,80,0.7)' : 'rgba(248,81,73,0.7)');
+  if (chartSent) chartSent.destroy();
+  chartSent = new Chart(document.getElementById('chartSent'), {
+    type: 'bar',
+    data: {
+      labels: sentLabels,
+      datasets: [{ data: sentVals, backgroundColor: sentColors, borderWidth:0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { ticks:{ color:'#8b949e', font:{size:9}, maxTicksLimit:5 }, grid:{ display:false } },
+        y: { min:-1, max:1, ticks:{ color:'#8b949e', font:{size:9} }, grid:{ color:'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+
+╔══════════════════════════════════════════════════════════════════╗
+║      RELATÓRIO — Previsão de Volatilidade BTC/USDT               ║
+╚══════════════════════════════════════════════════════════════════╝
+
+MÉTRICAS COMPARATIVAS:
+               MAE    RMSE    MAPE%   QLIKE      DA%         N
+GARCH(1,1) 0.09637 0.12616 30.01072 3.01213 54.46429 113.00000
+LSTM       0.02670 0.03055 10.52708 3.62854 41.46341  83.00000
+
+CONCLUSÕES:
+  • Menor MAE  → LSTM
+  • Menor RMSE → LSTM
+  • Maior DA%  → GARCH(1,1) (melhor precisão direcional)
+
+INTERPRETAÇÃO:
+  - MAE e RMSE na mesma escala da volatilidade anualizada
+  - DA% = % de dias em que o modelo acertou se vol subiu ou desceu
+  - Se RMSE >> MAE: previsões têm erros grandes ocasionais (spikes)
+  - ACF dos resíduos próxima de zero → modelo bem especificado
+
+NOTA SOBRE GARCH vs LSTM:
+  GARCH(1,1) tende a ser competitivo em horizontes curtos (1-5 dias)
+  e mercados eficientes. LSTM pode superar GARCH quando:
+    (a) Existem relações não-lineares entre features
+    (b) Sentimento tem poder preditivo adicional
+    (c) O horizonte de previsão é mais longo (5-22 dias)
